@@ -1,4 +1,1 @@
-flask
-flask-cors
-gunicorn
-requests
+# No dependencies - using only stdlib
