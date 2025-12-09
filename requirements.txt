@@ -1,1 +1,2 @@
-# No dependencies - using only stdlib
+flask
+gunicorn
