@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hukuk Asistanı - Yargıtay Karar Arama</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #FAFAF8; color: #1A1A1A; min-height: 100vh; }
+        .container { max-width: 720px; margin: 0 auto; padding: 16px; }
+        .header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 16px; border-bottom: 1px solid #E5E5E3; margin-bottom: 16px; }
+        .logo { display: flex; align-items: center; gap: 12px; }
+        .logo-icon { width: 40px; height: 40px; border-radius: 10px; background: #E8F0EA; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+        .logo h1 { font-size: 18px; font-weight: 600; }
+        .logo p { font-size: 12px; color: #999; }
+        .status { background: #E8F0EA; color: #4A7C59; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .status.error { background: #FDEEEE; color: #C45B5B; }
+        .status.loading { background: #FDF6EE; color: #C4956A; }
+        
+        .tabs { display: flex; gap: 4px; background: #F5F5F3; padding: 4px; border-radius: 12px; margin-bottom: 16px; }
+        .tab { flex: 1; padding: 12px; border-radius: 10px; border: none; background: transparent; color: #666; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+        .tab.active { background: #FFF; color: #1A1A1A; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        
+        .card { background: #FFF; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+        .search-box { display: flex; gap: 8px; }
+        .search-input { flex: 1; padding: 14px; background: #F5F5F3; border: none; border-radius: 10px; font-size: 15px; outline: none; }
+        .search-btn { padding: 14px 28px; border-radius: 10px; border: none; background: #4A7C59; color: #FFF; font-size: 15px; font-weight: 600; cursor: pointer; }
+        .search-btn:disabled { background: #F5F5F3; color: #999; cursor: not-allowed; }
+        
+        .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        .tag { padding: 8px 14px; border-radius: 8px; border: 1px solid #E5E5E3; background: #FFF; color: #666; font-size: 12px; cursor: pointer; }
+        .tag:hover { background: #F5F5F3; }
+        
+        .loading { text-align: center; padding: 50px; }
+        .loading-icon { font-size: 40px; margin-bottom: 16px; }
+        
+        .results { border: 1px solid #4A6FA5; }
+        .results-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #E5E5E3; }
+        .results-title { font-size: 14px; font-weight: 600; color: #4A6FA5; }
+        .results-count { font-size: 13px; color: #666; }
+        
+        .decision { padding: 14px; background: #F5F5F3; border-radius: 10px; margin-bottom: 8px; cursor: pointer; border: 2px solid transparent; transition: all 0.15s; }
+        .decision:hover { background: #EEF2F7; }
+        .decision.selected { background: #EEF2F7; border-color: #4A6FA5; }
+        .decision-header { display: flex; justify-content: space-between; align-items: center; }
+        .decision-daire { font-size: 14px; font-weight: 600; color: #4A6FA5; }
+        .decision-tarih { font-size: 12px; color: #666; }
+        .decision-info { font-size: 13px; color: #1A1A1A; margin-top: 6px; }
+        
+        .doc-content { border: 1px solid #4A7C59; margin-top: 12px; }
+        .doc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .doc-title { font-size: 14px; font-weight: 600; color: #4A7C59; }
+        .doc-close { background: #F5F5F3; border: none; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 14px; }
+        .doc-text { font-size: 13px; line-height: 1.7; white-space: pre-wrap; background: #F5F5F3; padding: 16px; border-radius: 10px; max-height: 400px; overflow: auto; }
+        
+        .error { text-align: center; padding: 24px; }
+        .error-icon { font-size: 28px; margin-bottom: 12px; }
+        .error-msg { color: #C45B5B; font-size: 14px; }
+        .retry-btn { margin-top: 16px; padding: 10px 20px; background: #4A7C59; color: #FFF; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
+        
+        .hidden { display: none; }
+        
+        /* Ceza hesaplama */
+        .slider-container { margin: 12px 0; }
+        .slider { width: 100%; accent-color: #4A7C59; }
+        .slider-value { text-align: center; margin-top: 8px; }
+        .slider-value span { font-size: 36px; font-weight: 700; color: #4A7C59; }
+        .slider-value small { font-size: 16px; color: #666; margin-left: 8px; }
+        
+        .indirim-list { margin-top: 12px; }
+        .indirim-item { display: flex; justify-content: space-between; align-items: center; padding: 14px; background: #F5F5F3; border-radius: 10px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
+        .indirim-item.active { background: #E8F0EA; }
+        .indirim-left { display: flex; align-items: center; gap: 12px; }
+        .checkbox { width: 22px; height: 22px; border-radius: 6px; border: 2px solid #E5E5E3; display: flex; align-items: center; justify-content: center; color: #FFF; font-size: 14px; }
+        .indirim-item.active .checkbox { background: #4A7C59; border: none; }
+        .indirim-oran { font-size: 14px; color: #4A7C59; font-weight: 600; }
+        
+        .sonuc-box { background: #E8F0EA; border-radius: 12px; padding: 28px; text-align: center; }
+        .sonuc-value { font-size: 48px; font-weight: 700; color: #4A7C59; }
+        .sonuc-label { font-size: 18px; color: #666; margin-top: 4px; }
+        .hagb-badge { margin-top: 16px; padding: 10px 20px; background: #FFF; border-radius: 24px; display: inline-block; font-size: 13px; color: #4A7C59; font-weight: 600; }
+        
+        /* Faiz hesaplama */
+        .input-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .input-group label { font-size: 11px; color: #666; font-weight: 600; display: block; margin-bottom: 8px; }
+        .input-group input { width: 100%; padding: 14px; background: #F5F5F3; border: none; border-radius: 10px; font-size: 16px; font-weight: 500; outline: none; }
+        
+        .faiz-sonuc { background: #FDF6EE; border-radius: 12px; padding: 24px; margin-top: 12px; }
+        .faiz-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; text-align: center; }
+        .faiz-item label { font-size: 11px; color: #666; font-weight: 600; }
+        .faiz-item .value { font-size: 20px; font-weight: 600; margin-top: 6px; }
+        .faiz-item .value.accent { color: #C4956A; }
+        .faiz-item .value.primary { color: #4A7C59; font-size: 22px; font-weight: 700; }
+        
+        .footer { text-align: center; font-size: 11px; color: #999; margin-top: 24px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon">⚖️</div>
+                <div>
+                    <h1>Hukuk Asistanı</h1>
+                    <p>Yargıtay Karar Arama</p>
+                </div>
+            </div>
+            <div class="status" id="status">● CANLI</div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" data-tab="arama" onclick="switchTab('arama')">🔍 Karar Ara</button>
+            <button class="tab" data-tab="ceza" onclick="switchTab('ceza')">⚖️ Ceza Hesapla</button>
+            <button class="tab" data-tab="faiz" onclick="switchTab('faiz')">💰 Faiz Hesapla</button>
+        </div>
+
+        <!-- Arama Tab -->
+        <div id="tab-arama">
+            <div class="card">
+                <div class="search-box">
+                    <input type="text" class="search-input" id="searchInput" placeholder="Anahtar kelime girin..." onkeydown="if(event.key==='Enter')search()">
+                    <button class="search-btn" id="searchBtn" onclick="search()">Ara</button>
+                </div>
+                <div class="tags">
+                    <span class="tag" onclick="setQuery('TCK 141')">TCK 141</span>
+                    <span class="tag" onclick="setQuery('TCK 86')">TCK 86</span>
+                    <span class="tag" onclick="setQuery('trafik kazasi')">trafik kazasi</span>
+                    <span class="tag" onclick="setQuery('icra takibi')">icra takibi</span>
+                    <span class="tag" onclick="setQuery('bosanma')">bosanma</span>
+                </div>
+            </div>
+
+            <div class="card hidden" id="loadingBox">
+                <div class="loading">
+                    <div class="loading-icon">⏳</div>
+                    <div style="font-size:16px;font-weight:500;">Yargıtay veritabanı aranıyor...</div>
+                    <div style="font-size:13px;color:#666;margin-top:8px;">Bu işlem birkaç saniye sürebilir</div>
+                </div>
+            </div>
+
+            <div class="card results hidden" id="resultsBox">
+                <div class="results-header">
+                    <span class="results-title">📚 Yargıtay Kararları</span>
+                    <span class="results-count" id="resultsCount"></span>
+                </div>
+                <div id="resultsList"></div>
+            </div>
+
+            <div class="card hidden" id="errorBox">
+                <div class="error">
+                    <div class="error-icon">⚠️</div>
+                    <div class="error-msg" id="errorMsg"></div>
+                    <button class="retry-btn" onclick="search()">Tekrar Dene</button>
+                </div>
+            </div>
+
+            <div class="card doc-content hidden" id="docBox">
+                <div class="doc-header">
+                    <span class="doc-title">📄 Karar Metni</span>
+                    <button class="doc-close" onclick="closeDoc()">✕</button>
+                </div>
+                <pre class="doc-text" id="docText"></pre>
+            </div>
+        </div>
+
+        <!-- Ceza Tab -->
+        <div id="tab-ceza" class="hidden">
+            <div class="card">
+                <label style="font-size:12px;color:#666;font-weight:600;">TEMEL CEZA (AY)</label>
+                <div class="slider-container">
+                    <input type="range" class="slider" id="cezaSlider" min="1" max="240" value="24" oninput="hesaplaCeza()">
+                </div>
+                <div class="slider-value">
+                    <span id="cezaAy">24</span>
+                    <small>ay (<span id="cezaYil">2.0</span> yıl)</small>
+                </div>
+            </div>
+            
+            <div class="card">
+                <label style="font-size:12px;color:#666;font-weight:600;">İNDİRİMLER</label>
+                <div class="indirim-list">
+                    <div class="indirim-item" data-oran="0.25" onclick="toggleIndirim(this)">
+                        <div class="indirim-left">
+                            <div class="checkbox">✓</div>
+                            <span>Haksız Tahrik</span>
+                        </div>
+                        <span class="indirim-oran">-25%</span>
+                    </div>
+                    <div class="indirim-item" data-oran="0.166" onclick="toggleIndirim(this)">
+                        <div class="indirim-left">
+                            <div class="checkbox">✓</div>
+                            <span>İyi Hal (TCK 62)</span>
+                        </div>
+                        <span class="indirim-oran">-17%</span>
+                    </div>
+                    <div class="indirim-item" data-oran="0.5" onclick="toggleIndirim(this)">
+                        <div class="indirim-left">
+                            <div class="checkbox">✓</div>
+                            <span>Etkin Pişmanlık</span>
+                        </div>
+                        <span class="indirim-oran">-50%</span>
+                    </div>
+                    <div class="indirim-item" data-oran="0.333" onclick="toggleIndirim(this)">
+                        <div class="indirim-left">
+                            <div class="checkbox">✓</div>
+                            <span>Yaş Küçüklüğü</span>
+                        </div>
+                        <span class="indirim-oran">-33%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sonuc-box">
+                <label style="font-size:12px;color:#666;font-weight:600;">SONUÇ CEZA</label>
+                <div class="sonuc-value" id="sonucCeza">24.0</div>
+                <div class="sonuc-label">ay (<span id="sonucYil">2.0</span> yıl)</div>
+                <div class="hagb-badge" id="hagbBadge">✓ HAGB Uygulanabilir</div>
+            </div>
+        </div>
+
+        <!-- Faiz Tab -->
+        <div id="tab-faiz" class="hidden">
+            <div class="card">
+                <div class="input-grid">
+                    <div class="input-group">
+                        <label>ANAPARA (₺)</label>
+                        <input type="number" id="anapara" value="100000" oninput="hesaplaFaiz()">
+                    </div>
+                    <div class="input-group">
+                        <label>FAİZ ORANI (%)</label>
+                        <input type="number" id="faizOran" value="24" oninput="hesaplaFaiz()">
+                    </div>
+                    <div class="input-group">
+                        <label>GÜN SAYISI</label>
+                        <input type="number" id="gunSayisi" value="180" oninput="hesaplaFaiz()">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="faiz-sonuc">
+                <div class="faiz-grid">
+                    <div class="faiz-item">
+                        <label>ANAPARA</label>
+                        <div class="value" id="faizAnapara">100.000 ₺</div>
+                    </div>
+                    <div class="faiz-item">
+                        <label>FAİZ</label>
+                        <div class="value accent" id="faizTutar">+11.836 ₺</div>
+                    </div>
+                    <div class="faiz-item">
+                        <label>TOPLAM</label>
+                        <div class="value primary" id="faizToplam">111.836 ₺</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p class="footer">Yargı API (Render) + Bedesten + MCP • v1.0</p>
+    </div>
+
+    <script>
+        const API_BASE = 'https://yargi-api.onrender.com';
+        let selectedDocId = null;
+
+        // Tab değiştir
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+            
+            document.querySelectorAll('[id^="tab-"]').forEach(t => t.classList.add('hidden'));
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
+        }
+
+        // Arama
+        function setQuery(q) {
+            document.getElementById('searchInput').value = q;
+        }
+
+        async function search() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) return;
+
+            document.getElementById('loadingBox').classList.remove('hidden');
+            document.getElementById('resultsBox').classList.add('hidden');
+            document.getElementById('errorBox').classList.add('hidden');
+            document.getElementById('docBox').classList.add('hidden');
+            document.getElementById('searchBtn').disabled = true;
+            document.getElementById('status').textContent = '● ARIYOR';
+            document.getElementById('status').className = 'status loading';
+
+            try {
+                const res = await fetch(`${API_BASE}/search?keyword=${encodeURIComponent(query)}`);
+                const data = await res.json();
+
+                document.getElementById('loadingBox').classList.add('hidden');
+                document.getElementById('searchBtn').disabled = false;
+
+                if (data.success) {
+                    document.getElementById('status').textContent = '● CANLI';
+                    document.getElementById('status').className = 'status';
+                    document.getElementById('resultsCount').textContent = data.total.toLocaleString('tr-TR') + ' sonuç';
+                    
+                    const list = document.getElementById('resultsList');
+                    list.innerHTML = '';
+                    
+                    data.decisions.forEach(d => {
+                        const div = document.createElement('div');
+                        div.className = 'decision';
+                        div.dataset.id = d.id;
+                        div.innerHTML = `
+                            <div class="decision-header">
+                                <span class="decision-daire">${d.daire}</span>
+                                <span class="decision-tarih">${d.tarih}</span>
+                            </div>
+                            <div class="decision-info">Esas: ${d.esasNo} • Karar: ${d.kararNo}</div>
+                        `;
+                        div.onclick = () => loadDoc(d.id);
+                        list.appendChild(div);
+                    });
+                    
+                    document.getElementById('resultsBox').classList.remove('hidden');
+                } else {
+                    throw new Error(data.error || 'Bilinmeyen hata');
+                }
+            } catch (e) {
+                document.getElementById('loadingBox').classList.add('hidden');
+                document.getElementById('searchBtn').disabled = false;
+                document.getElementById('status').textContent = '● HATA';
+                document.getElementById('status').className = 'status error';
+                document.getElementById('errorMsg').textContent = e.message;
+                document.getElementById('errorBox').classList.remove('hidden');
+            }
+        }
+
+        async function loadDoc(id) {
+            document.querySelectorAll('.decision').forEach(d => d.classList.remove('selected'));
+            document.querySelector(`[data-id="${id}"]`).classList.add('selected');
+            
+            document.getElementById('docText').textContent = 'Yükleniyor...';
+            document.getElementById('docBox').classList.remove('hidden');
+
+            try {
+                const res = await fetch(`${API_BASE}/document?id=${id}`);
+                const data = await res.json();
+                
+                if (data.success) {
+                    document.getElementById('docText').textContent = data.content;
+                } else {
+                    document.getElementById('docText').textContent = 'Hata: ' + data.error;
+                }
+            } catch (e) {
+                document.getElementById('docText').textContent = 'Hata: ' + e.message;
+            }
+        }
+
+        function closeDoc() {
+            document.getElementById('docBox').classList.add('hidden');
+            document.querySelectorAll('.decision').forEach(d => d.classList.remove('selected'));
+        }
+
+        // Ceza hesaplama
+        function hesaplaCeza() {
+            let ceza = parseInt(document.getElementById('cezaSlider').value);
+            document.getElementById('cezaAy').textContent = ceza;
+            document.getElementById('cezaYil').textContent = (ceza / 12).toFixed(1);
+
+            let sonuc = ceza;
+            document.querySelectorAll('.indirim-item.active').forEach(item => {
+                sonuc *= (1 - parseFloat(item.dataset.oran));
+            });
+            sonuc = Math.round(sonuc * 10) / 10;
+
+            document.getElementById('sonucCeza').textContent = sonuc.toFixed(1);
+            document.getElementById('sonucYil').textContent = (sonuc / 12).toFixed(1);
+            
+            const hagb = document.getElementById('hagbBadge');
+            if (sonuc <= 24) {
+                hagb.style.display = 'inline-block';
+            } else {
+                hagb.style.display = 'none';
+            }
+        }
+
+        function toggleIndirim(el) {
+            el.classList.toggle('active');
+            hesaplaCeza();
+        }
+
+        // Faiz hesaplama
+        function hesaplaFaiz() {
+            const ana = parseInt(document.getElementById('anapara').value) || 0;
+            const oran = parseFloat(document.getElementById('faizOran').value) || 0;
+            const gun = parseInt(document.getElementById('gunSayisi').value) || 0;
+
+            const faiz = Math.round(ana * (oran / 100) * (gun / 365));
+            const toplam = ana + faiz;
+
+            document.getElementById('faizAnapara').textContent = ana.toLocaleString('tr-TR') + ' ₺';
+            document.getElementById('faizTutar').textContent = '+' + faiz.toLocaleString('tr-TR') + ' ₺';
+            document.getElementById('faizToplam').textContent = toplam.toLocaleString('tr-TR') + ' ₺';
+        }
+
+        // Başlangıç
+        hesaplaCeza();
+        hesaplaFaiz();
+
+        // API durumu kontrol
+        fetch(API_BASE).then(r => {
+            if (r.ok) {
+                document.getElementById('status').textContent = '● CANLI';
+                document.getElementById('status').className = 'status';
+            }
+        }).catch(() => {
+            document.getElementById('status').textContent = '● UYANIYOR';
+            document.getElementById('status').className = 'status loading';
+        });
+    </script>
+</body>
+</html>
